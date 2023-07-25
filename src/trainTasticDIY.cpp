@@ -2,7 +2,7 @@
 
 // https://traintastic.org/en-us/manual/master#tdiyp
 
-// #define DEBUG
+#define DEBUG
 
 TrainTasticDIY::TrainTasticDIY()  // constructor
 {
@@ -70,9 +70,9 @@ uint8_t TrainTasticDIY::getMessage()
 
     if( mode == getOpcode )
     {
-        // #ifdef DEBUG
-        // Serial.println(F( "receiving message")) ;
-        // #endif
+        #ifdef DEBUG
+        Serial.println(F( "receiving message")) ;
+        #endif
         
         if( serialByte & 0x0F == 0x0F ) // if true message length will be in following byte
         {
@@ -131,7 +131,7 @@ void TrainTasticDIY::processMessage()
 {
     uint8_t opcode = buf[0] ;
 
-    Serial.println(opcode) ;
+    //Serial.println(opcode) ;
     
     switch( opcode )
     {
@@ -139,6 +139,10 @@ void TrainTasticDIY::processMessage()
         {
             uint8_t message[] = { OPC_HEARTBEAT, 0 } ;
             sendMessage( message ) ;
+            #ifdef DEBUG
+            Serial.println(F( "Responding OPC_HEARTBEAT")) ;
+            #endif
+            
             // make notify?
         } break ;
 
@@ -147,6 +151,9 @@ void TrainTasticDIY::processMessage()
             uint8_t message[] = { OPC_SEND_INFO,0 /*length param1 .. param255*/ } ;
             // TODO fill in parameters message[1] = ... etc
             sendMessage( message ) ;
+            #ifdef DEBUG
+            Serial.println(F( "Responding OPC_GET_INFO")) ;
+            #endif
             // make notify?
         } break ;
 
@@ -156,6 +163,9 @@ void TrainTasticDIY::processMessage()
             // TODO fill in parameters message[1] = ... etc
             sendMessage( message ) ;
             // make notify?
+            #ifdef DEBUG
+            Serial.println(F( "Responding OPC_GET_FEATURES")) ;
+            #endif
         } break ;
 
 
@@ -165,6 +175,10 @@ void TrainTasticDIY::processMessage()
             // TODO fill in parameters message[1] = ... etc
             sendMessage( message ) ;
             // make notify?
+            #ifdef DEBUG
+            Serial.println(F( "Responding OPC_GET_INPUT")) ;
+            #endif
+            
 
         } break ;
 
@@ -173,11 +187,17 @@ void TrainTasticDIY::processMessage()
             uint8_t message[] = {OPC_SET_OUTPUT,0 /*param1, param2, param3*/ } ;
             // TODO fill in parameters message[1] = ... etc
             sendMessage( message ) ;
+            #ifdef DEBUG
+            Serial.println(F( "Responding OPC_GET_OUTPUT")) ;
+            #endif
             // make notify?
         } break ;
 
         case OPC_SET_SPEED:
         {
+            #ifdef DEBUG
+            Serial.println(F( "Responding OPC_SET_SPEED")) ;
+            #endif
         }
     }
 }
