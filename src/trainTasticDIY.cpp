@@ -2,13 +2,17 @@
 
 // https://traintastic.org/en-us/manual/master#tdiyp
 
-#define DEBUG
+// #define DEBUG
+
+
 
 TrainTasticDIY::TrainTasticDIY()  // constructor
 {
 }
 
-void TrainTasticDIY::begin( uint8_t VAL, char *description  ) // not needed I believe
+
+// just sends the description and report our type
+void TrainTasticDIY::begin( uint8_t type, char *description  ) // N.B. type is not used yet.
 {
     int length = 0;
     while (description[length] != '\0') { length ++ ; }// calculate length of description
@@ -21,7 +25,7 @@ void TrainTasticDIY::begin( uint8_t VAL, char *description  ) // not needed I be
         message[i] = *description ++ ;
     }
 
-    sendMessage( message) ;
+    transmitt( message) ;
 }
 
 void TrainTasticDIY::sendByte( uint8_t b  )
@@ -31,7 +35,7 @@ void TrainTasticDIY::sendByte( uint8_t b  )
 } 
 
 
-void TrainTasticDIY::sendMessage( uint8_t* message )
+void TrainTasticDIY::transmitt( uint8_t* message )
 {
     uint8_t XOR = 0x00;                 // declare checksum
 
@@ -61,6 +65,12 @@ void TrainTasticDIY::sendMessage( uint8_t* message )
 
 uint8_t TrainTasticDIY::getMessage() 
 {
+    if( Serial.available() > 0 )
+    {
+        serialByte = Serial.read() ;
+        newByte    = true ;
+    }
+
     if( newByte == false ) return 0 ;
     newByte = false ;
 
@@ -71,7 +81,7 @@ uint8_t TrainTasticDIY::getMessage()
     if( mode == getOpcode )
     {
         #ifdef DEBUG
-        Serial.println(F( "receiving message")) ;
+        Serial.println(F( "\r\nreceiving message")) ;
         #endif
         
         if( serialByte & 0x0F == 0x0F ) // if true message length will be in following byte
@@ -80,12 +90,12 @@ uint8_t TrainTasticDIY::getMessage()
         }
         else
         {
-            messageLength = serialByte & 0x0F ; // store length of message (may need a +1?
+            messageLength = serialByte & 0x0F ; // store length of message
             if( messageLength == 0 )
             {
-                // #ifdef DEBUG
-                // Serial.println(F( "message received (just opcode)")) ;
-                // #endif
+                #ifdef DEBUG
+                Serial.println(F( "message received (just opcode)")) ;
+                #endif
                 ptr = &buf[0] ;
                 *ptr = serialByte ;
 
@@ -115,12 +125,12 @@ uint8_t TrainTasticDIY::getMessage()
         ptr ++ ;
         if( ++ byteCounter == messageLength )
         {
-            // #ifdef DEBUG
-            // Serial.println(F( "message received")) ;
-            // #endif
+            #ifdef DEBUG
+            Serial.println(F( "message received, processing")) ;
+            #endif
             
             mode = getOpcode ;
-            return 1 ;
+            return 1 ;      // flag that complete message is received. May want to use this to distinct messages for throttles or output units.
         }
     }
 
@@ -130,67 +140,58 @@ uint8_t TrainTasticDIY::getMessage()
 void TrainTasticDIY::processMessage()
 {
     uint8_t opcode = buf[0] ;
-
-    //Serial.println(opcode) ;
     
     switch( opcode )
     {
         case OPC_HEARTBEAT:
         {
             uint8_t message[] = { OPC_HEARTBEAT, 0 } ;
-            sendMessage( message ) ;
             #ifdef DEBUG
-            Serial.println(F( "Responding OPC_HEARTBEAT")) ;
+            Serial.println(F( "\r\nResponding OPC_HEARTBEAT")) ;
             #endif
-            
-            // make notify?
+            transmitt( message ) ;
         } break ;
 
         case OPC_GET_INFO:
         {
-            uint8_t message[] = { OPC_SEND_INFO,0 /*length param1 .. param255*/ } ;
+            // uint8_t message[] = { OPC_SEND_INFO,0 /*length param1 .. param255*/ } ;
             // TODO fill in parameters message[1] = ... etc
-            sendMessage( message ) ;
             #ifdef DEBUG
-            Serial.println(F( "Responding OPC_GET_INFO")) ;
+            Serial.println(F( "\r\nResponding OPC_GET_INFO")) ;
             #endif
-            // make notify?
+            //begin( IS_THROTTLE, "ThrottleX ds V1.0" ) ;
+            //transmitt( message ) ;
         } break ;
 
         case OPC_GET_FEATURES:
         {
-            uint8_t message[] = {OPC_SEND_FEATURES,0 /*param1, param2, param3 param4*/ } ;
+            uint8_t message[] = {OPC_SEND_FEATURES, IS_THROTTLE, 0, 0, 0 /*param1, param2, param3 param4*/ } ;
             // TODO fill in parameters message[1] = ... etc
-            sendMessage( message ) ;
             // make notify?
             #ifdef DEBUG
             Serial.println(F( "Responding OPC_GET_FEATURES")) ;
             #endif
+            transmitt( message ) ;
         } break ;
 
 
         case OPC_GET_INPUT:
         {
-            uint8_t message[] = {OPC_SEND_INPUT,0 /*param1, param2, param3*/ } ;
-            // TODO fill in parameters message[1] = ... etc
-            sendMessage( message ) ;
-            // make notify?
             #ifdef DEBUG
             Serial.println(F( "Responding OPC_GET_INPUT")) ;
             #endif
-            
 
+            if( notifyGetInput ) notifyGetInput() ;
         } break ;
 
         case OPC_GET_OUTPUT:
         {
-            uint8_t message[] = {OPC_SET_OUTPUT,0 /*param1, param2, param3*/ } ;
-            // TODO fill in parameters message[1] = ... etc
-            sendMessage( message ) ;
             #ifdef DEBUG
             Serial.println(F( "Responding OPC_GET_OUTPUT")) ;
             #endif
-            // make notify?
+
+            if( notifyGetOutput ) notifyGetOutput() ;
+            
         } break ;
 
         case OPC_SET_SPEED:
@@ -198,41 +199,67 @@ void TrainTasticDIY::processMessage()
             #ifdef DEBUG
             Serial.println(F( "Responding OPC_SET_SPEED")) ;
             #endif
+
+            if( notifySetSpeed ) notifySetSpeed() ; // TODO add parameters 0x37 <TH> <TL> <AH> <AL> <SP> <SM> <FL> <checksum>
         }
     }
 }
 
+TrainTasticDIY TrainTastic = TrainTasticDIY() ;
+
+// THROTTLE CLASS
+TrainTasticDIYThrottle::TrainTasticDIYThrottle()
+{
+} 
 
 
-void TrainTasticDIY::setSpeed( uint8_t speed )
+void TrainTasticDIYThrottle::setAddress( uint16_t newAddress )
+{
+    address = newAddress ;
+}
+
+void TrainTasticDIYThrottle::setSpeed( uint8_t speed )  // N.B. should be in throttle class
 { // 0x37 <TH> <TL> <AH> <AL> <SP> <SM> <FL> <checksum>
     uint8_t message[] = { 
         OPC_SET_SPEED, 
         highByte(id),       lowByte(id),
         highByte(address),  lowByte(address),
-        speed,               //
+        speed,              //
         128,                // // SM max speed 
-        0b10000000          // FL
+        SET_SPEED           // FL
     } ; // set speed only
 
-    sendMessage( message ) ;
+    TrainTastic.transmitt( message ) ;
 }
 
-uint8_t TrainTasticDIY::getSpeed()
+uint8_t TrainTasticDIYThrottle::getSpeed()  // N.B. should be in throttle class
 {
     return speed ;
 }
 
-void TrainTasticDIY::setDirection(uint8_t)
+void TrainTasticDIYThrottle::setDirection( uint8_t newDir ) // N.B. should be in throttle class
 {
+    direction = newDir ;
+     // 0x37 <TH> <TL> <AH> <AL> <SP> <SM> <FL> <checksum>
+    uint8_t message[] = { 
+        OPC_SET_SPEED, 
+        highByte(id),       lowByte(id),
+        highByte(address),  lowByte(address),
+        speed,                  //
+        128,                    // // SM max speed 
+        direction | SET_DIR     // FL
+    } ; // set speed only
+
+    TrainTastic.transmitt( message ) ;
 }
 
-uint8_t TrainTasticDIY::getDirection(void)
+uint8_t TrainTasticDIYThrottle::getDirection(void)  // N.B. should be in throttle class
 {
+    return direction ;
 }
 
 //OPC_SET_FUNCTION <TH> <TL> <AH> <AL> <FN> <checksum>
-void TrainTasticDIY::setFunction( uint8_t Fx, uint8_t state )
+void TrainTasticDIYThrottle::setFunction( uint8_t Fx, uint8_t state )  // N.B. should be in throttle class
 {
     uint8_t message[] = 
     {
@@ -242,9 +269,9 @@ void TrainTasticDIY::setFunction( uint8_t Fx, uint8_t state )
         Fx | (state<<7)
     } ;
 
-    sendMessage( message ) ;
+    TrainTastic.transmitt( message ) ;
 }
 
-uint8_t TrainTasticDIY::getFunction()
+uint8_t TrainTasticDIYThrottle::getFunction()  // N.B. should be in throttle class
 {
 }
