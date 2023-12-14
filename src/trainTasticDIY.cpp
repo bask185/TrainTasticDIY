@@ -18,7 +18,7 @@ void TrainTasticDIY::begin( uint8_t type, char *description  ) // N.B. type is n
     while (description[length] != '\0') { length ++ ; }// calculate length of description
     length ++ ;
 
-    uint8_t message[length+1] = {OPC_SEND_INFO, length} ;
+    uint8_t message[length+1] = {OPC_SEND_INFO, length+1} ;
 
     for( int i = 2 ; i < length+3 ; i ++ )   
     {
@@ -154,13 +154,10 @@ void TrainTasticDIY::processMessage()
 
         case OPC_GET_INFO:
         {
-            // uint8_t message[] = { OPC_SEND_INFO,0 /*length param1 .. param255*/ } ;
-            // TODO fill in parameters message[1] = ... etc
             #ifdef DEBUG
             Serial.println(F( "\r\nResponding OPC_GET_INFO")) ;
             #endif
-            //begin( IS_THROTTLE, "ThrottleX ds V1.0" ) ;
-            //transmitt( message ) ;
+            begin( IS_THROTTLE, "ThrottleX ds V1.0" ) ; // either add a char * array for this, or make a callback function so you can hardcode a string in main file.
         } break ;
 
         case OPC_GET_FEATURES:
@@ -275,3 +272,4 @@ void TrainTasticDIYThrottle::setFunction( uint8_t Fx, uint8_t state )  // N.B. s
 uint8_t TrainTasticDIYThrottle::getFunction()  // N.B. should be in throttle class
 {
 }
+
