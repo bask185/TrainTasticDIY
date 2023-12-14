@@ -55,7 +55,7 @@ const int OPC_UNSUBSCRIBE   = 0x34 ;  // send:
 
 // The token themselfes can be linked to virtual occupancy sensors. If a token for a section is dispatched to a throttle, the entire section should be reported as occupied.
 const int OPC_SEND_TOKEN = 0x4F ; // message: sends a token 
-// format <OPC>, <SIZE>, <THROTTLE_ID_HB>, <THROTTLE_ID_LB>, <LOCO_ADDRESS_HB>, <LOCO_ADDRESS_LB>, <"token name">
+// format <OPC>, <SIZE>, <THROTTLE_ID_HB>, <THROTTLE_ID_LB>, <LOCO_ADDRESS_HB>, <LOCO_ADDRESS_LB>, <"TOKEN NAME">
 const int OPC_REQ_TOKEN = 0x40 ; // response ACK token
 // or  const int OPC_REQUEST_TOKEN = 0x42 ; // respons ACK + throttle ID
 

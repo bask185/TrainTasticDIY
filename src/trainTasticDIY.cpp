@@ -202,7 +202,7 @@ void TrainTasticDIY::processMessage()
     }
 }
 
-TrainTasticDIY TrainTastic = TrainTasticDIY() ;
+TrainTasticDIY TrainTastic = TrainTasticDIY() ; // create an instance of trainTastic. This is much needed for atleast the throttle class
 
 // THROTTLE CLASS
 TrainTasticDIYThrottle::TrainTasticDIYThrottle()
